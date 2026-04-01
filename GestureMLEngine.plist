@@ -1,0 +1,778 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+
+    <!-- ═══════════════════════════════════════════════════════
+         CORE ENGINE
+         ═══════════════════════════════════════════════════════ -->
+    <key>GestureMLEngine</key>
+    <dict>
+        <key>Storage_Key</key>
+        <string>gesture_patterns_v5</string>
+
+        <key>Engine_Version</key>
+        <string>5.0.0</string>
+
+        <!-- Reduced from 4 → 2: enables faster cold-start recognition -->
+        <key>Min_Points_For_Prediction</key>
+        <integer>2</integer>
+
+        <!-- Base threshold; overridden dynamically by Context_Awareness -->
+        <key>Similarity_Threshold</key>
+        <real>0.68</real>
+
+        <!-- 4× more capacity with tiered eviction policy -->
+        <key>Max_Stored_Patterns</key>
+        <integer>2000</integer>
+
+        <!-- More candidates → better ensemble voting -->
+        <key>Prediction_Candidate_Limit</key>
+        <integer>25</integer>
+
+        <key>Realtime_Prediction_Enabled</key>
+        <true/>
+
+        <key>Adaptive_Learning_Enabled</key>
+        <true/>
+
+        <!-- NEW: CoreML neural backbone for raw-point encoding -->
+        <key>CoreML_Model_Enabled</key>
+        <true/>
+
+        <key>CoreML_Model_Filename</key>
+        <string>GestureEncoder_v2.mlmodelc</string>
+
+        <!-- NEW: use GPU/ANE when available -->
+        <key>CoreML_Compute_Units</key>
+        <string>all</string>
+
+        <!-- NEW: streaming inference; no need to wait for gesture end -->
+        <key>Online_Inference_Enabled</key>
+        <true/>
+
+        <!-- NEW: multi-finger simultaneous pattern matching -->
+        <key>Multi_Touch_Matching_Enabled</key>
+        <true/>
+
+        <!-- NEW: Apple Pencil pressure / azimuth / altitude channels -->
+        <key>Pencil_Input_Enabled</key>
+        <true/>
+    </dict>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         CONFIDENCE SCORING  (Bayesian ensemble)
+         ═══════════════════════════════════════════════════════ -->
+    <key>Confidence_Scoring</key>
+    <dict>
+        <!-- Wider recency window captures weekly usage rhythms -->
+        <key>Recency_Window_Hours</key>
+        <real>168.0</real>
+
+        <!-- Re-balanced weights: shape accuracy more important -->
+        <key>Recency_Weight</key>
+        <real>0.25</real>
+
+        <key>Frequency_Weight</key>
+        <real>0.35</real>
+
+        <key>Accuracy_Weight</key>
+        <real>0.30</real>
+
+        <!-- NEW: reward gestures performed in the same app context -->
+        <key>Context_Match_Weight</key>
+        <real>0.10</real>
+
+        <!-- Higher cap raises precision ceiling -->
+        <key>Max_Frequency_For_Full_Score</key>
+        <integer>30</integer>
+
+        <!-- Slower decay = longer memory -->
+        <key>Decay_Factor_Per_Hour</key>
+        <real>0.008</real>
+
+        <!-- Lower storage floor = capture rare but valid gestures -->
+        <key>Min_Confidence_To_Store</key>
+        <real>0.18</real>
+
+        <!-- NEW: Bayesian prior from global aggregate model -->
+        <key>Bayesian_Prior_Enabled</key>
+        <true/>
+
+        <key>Bayesian_Prior_Strength</key>
+        <real>0.12</real>
+
+        <!-- NEW: ensemble vote from top-K candidates -->
+        <key>Ensemble_Voting_Enabled</key>
+        <true/>
+
+        <key>Ensemble_Top_K</key>
+        <integer>5</integer>
+
+        <!-- NEW: temperature-scaled softmax for calibrated probabilities -->
+        <key>Softmax_Temperature</key>
+        <real>0.6</real>
+    </dict>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         SIMILARITY COMPUTATION
+         ═══════════════════════════════════════════════════════ -->
+    <key>Similarity_Computation</key>
+    <dict>
+        <!-- Weights re-balanced; shape dominates, force has more say -->
+        <key>Direction_Weight</key>
+        <real>0.20</real>
+
+        <key>Velocity_Weight</key>
+        <real>0.20</real>
+
+        <key>Shape_Weight</key>
+        <real>0.35</real>
+
+        <key>Force_Weight</key>
+        <real>0.15</real>
+
+        <!-- NEW: temporal rhythm similarity (inter-point timing) -->
+        <key>Temporal_Weight</key>
+        <real>0.10</real>
+
+        <key>Progress_Bonus</key>
+        <real>0.20</real>
+
+        <key>Progress_Bonus_Threshold</key>
+        <real>0.20</real>
+
+        <!-- 2× sampling = finer shape resolution -->
+        <key>Shape_Sample_Count</key>
+        <integer>20</integer>
+
+        <!-- Larger normalizer tolerates big-screen gestures -->
+        <key>Shape_Distance_Normalizer</key>
+        <real>400.0</real>
+
+        <!-- Wider DTW band for natural speed variation -->
+        <key>DTW_Window_Size</key>
+        <integer>8</integer>
+
+        <!-- Faster phone screens; higher normalizer -->
+        <key>Velocity_Normalization_Factor</key>
+        <real>2000.0</real>
+
+        <key>Force_Normalization_Factor</key>
+        <real>6.0</real>
+
+        <!-- NEW: soft-DTW (differentiable) for gradient-based updates -->
+        <key>Soft_DTW_Enabled</key>
+        <true/>
+
+        <key>Soft_DTW_Gamma</key>
+        <real>0.05</real>
+
+        <!-- NEW: attention-weighted point importance along trajectory -->
+        <key>Attention_Mechanism_Enabled</key>
+        <true/>
+
+        <key>Attention_Heads</key>
+        <integer>4</integer>
+
+        <!-- NEW: curvature profile similarity (integral of |κ| diff) -->
+        <key>Curvature_Similarity_Enabled</key>
+        <true/>
+
+        <key>Curvature_Weight</key>
+        <real>0.08</real>
+
+        <!-- NEW: scale / rotation invariant descriptor (RDP + PDollar) -->
+        <key>Invariant_Descriptor_Enabled</key>
+        <true/>
+
+        <!-- NEW: learned metric embedding (2D → 128-D space) -->
+        <key>Learned_Metric_Enabled</key>
+        <true/>
+
+        <key>Learned_Metric_Embedding_Dim</key>
+        <integer>128</integer>
+    </dict>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         NOISE FILTER  (Kalman + adaptive outlier rejection)
+         ═══════════════════════════════════════════════════════ -->
+    <key>Noise_Filter</key>
+    <dict>
+        <!-- Tighter min-distance to catch micro-gestures -->
+        <key>Min_Point_Distance_px</key>
+        <real>2.0</real>
+
+        <!-- Shorter interval cap reduces aliasing on 120 Hz displays -->
+        <key>Max_Point_Interval_ms</key>
+        <real>120.0</real>
+
+        <!-- Tighter outlier rejection -->
+        <key>Outlier_Velocity_Multiplier</key>
+        <real>2.8</real>
+
+        <!-- Wider smoothing window for fast gestures -->
+        <key>Smoothing_Window</key>
+        <integer>5</integer>
+
+        <!-- NEW: 1-Euro filter for low-latency, low-jitter smoothing -->
+        <key>One_Euro_Filter_Enabled</key>
+        <true/>
+
+        <key>One_Euro_Min_Cutoff_Hz</key>
+        <real>1.0</real>
+
+        <key>One_Euro_Beta</key>
+        <real>0.007</real>
+
+        <key>One_Euro_DCutoff_Hz</key>
+        <real>1.0</real>
+
+        <!-- NEW: Kalman filter for position + velocity state estimation -->
+        <key>Kalman_Filter_Enabled</key>
+        <true/>
+
+        <key>Kalman_Process_Noise</key>
+        <real>0.001</real>
+
+        <key>Kalman_Measurement_Noise</key>
+        <real>0.1</real>
+
+        <!-- NEW: separate path for Apple Pencil (much lower noise floor) -->
+        <key>Pencil_Min_Point_Distance_px</key>
+        <real>0.5</real>
+
+        <key>Pencil_Smoothing_Window</key>
+        <integer>3</integer>
+
+        <!-- NEW: adaptive threshold adjusts on-the-fly to tremor level -->
+        <key>Adaptive_Noise_Floor_Enabled</key>
+        <true/>
+
+        <key>Adaptive_Noise_Floor_Window</key>
+        <integer>30</integer>
+    </dict>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         GESTURE CLASSIFICATION
+         ═══════════════════════════════════════════════════════ -->
+    <key>Gesture_Classification</key>
+    <dict>
+        <key>LongPress_Duration_Threshold</key>
+        <real>0.40</real>
+
+        <key>LongPress_Distance_Threshold</key>
+        <real>12.0</real>
+
+        <key>Tap_Distance_Threshold</key>
+        <real>10.0</real>
+
+        <key>Swipe_Min_Velocity</key>
+        <real>120.0</real>
+
+        <key>Pinch_Min_Touch_Count</key>
+        <integer>2</integer>
+
+        <key>Rotation_Min_Angle_Degrees</key>
+        <real>12.0</real>
+
+        <!-- NEW: double-tap temporal window -->
+        <key>DoubleTap_Max_Interval_ms</key>
+        <real>300.0</real>
+
+        <key>DoubleTap_Max_Distance_px</key>
+        <real>20.0</real>
+
+        <!-- NEW: edge-swipe origin zone (points from screen edge) -->
+        <key>EdgeSwipe_Enabled</key>
+        <true/>
+
+        <key>EdgeSwipe_Margin_px</key>
+        <real>20.0</real>
+
+        <!-- NEW: 3-finger and 4-finger compound gestures -->
+        <key>MultiFingerSwipe_Max_Fingers</key>
+        <integer>4</integer>
+
+        <!-- NEW: force-tap / deep-press threshold (normalised 0–1) -->
+        <key>ForceTap_Force_Threshold</key>
+        <real>0.75</real>
+
+        <!-- NEW: scrub gesture (back-and-forth along an axis) -->
+        <key>Scrub_Min_Reversals</key>
+        <integer>2</integer>
+
+        <key>Scrub_Axis_Tolerance_Degrees</key>
+        <real>20.0</real>
+
+        <!-- NEW: draw-and-hold (path + sustained press at end) -->
+        <key>DrawAndHold_Hold_Duration_ms</key>
+        <real>400.0</real>
+
+        <!-- NEW: flick (very short, fast tap-swipe hybrid) -->
+        <key>Flick_Max_Duration_ms</key>
+        <real>150.0</real>
+
+        <key>Flick_Min_Velocity</key>
+        <real>800.0</real>
+    </dict>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         DIRECTION & ANGLE RESOLUTION
+         ═══════════════════════════════════════════════════════ -->
+    <key>Direction_Angle_Ranges</key>
+    <dict>
+        <!-- Cardinal directions unchanged; tolerance tightened -->
+        <key>Right_Min</key>  <real>-45.0</real>
+        <key>Right_Max</key>  <real>45.0</real>
+        <key>Down_Min</key>   <real>45.0</real>
+        <key>Down_Max</key>   <real>135.0</real>
+        <key>Up_Min</key>     <real>-135.0</real>
+        <key>Up_Max</key>     <real>-45.0</real>
+
+        <!-- Tighter diagonal tolerance = better cardinal discrimination -->
+        <key>Diagonal_Tolerance_Degrees</key> <real>7.0</real>
+
+        <!-- NEW: explicit diagonal sectors for 8-way classification -->
+        <key>Eight_Way_Classification_Enabled</key>
+        <true/>
+
+        <key>UpRight_Min</key>   <real>-90.0</real>
+        <key>UpRight_Max</key>   <real>-45.0</real>
+        <key>DownRight_Min</key> <real>45.0</real>
+        <key>DownRight_Max</key> <real>90.0</real>
+        <key>DownLeft_Min</key>  <real>90.0</real>
+        <key>DownLeft_Max</key>  <real>135.0</real>
+        <key>UpLeft_Min</key>    <real>-135.0</real>
+        <key>UpLeft_Max</key>    <real>-90.0</real>
+    </dict>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         ADAPTIVE LEARNING
+         ═══════════════════════════════════════════════════════ -->
+    <key>Adaptive_Learning</key>
+    <dict>
+        <key>Merge_Similar_Patterns_Enabled</key>
+        <true/>
+
+        <!-- Tighter merge threshold: fewer duplicates -->
+        <key>Merge_Similarity_Threshold</key>
+        <real>0.95</real>
+
+        <key>Prune_Low_Confidence_Enabled</key>
+        <true/>
+
+        <key>Prune_Confidence_Cutoff</key>
+        <real>0.08</real>
+
+        <!-- Prune more frequently -->
+        <key>Prune_Interval_Sessions</key>
+        <integer>5</integer>
+
+        <!-- 50% more patterns per action -->
+        <key>Max_Patterns_Per_Action</key>
+        <integer>30</integer>
+
+        <!-- Slightly faster learning rate -->
+        <key>Learning_Rate</key>
+        <real>0.18</real>
+
+        <!-- NEW: momentum for smoother prototype updates -->
+        <key>Learning_Momentum</key>
+        <real>0.85</real>
+
+        <!-- NEW: negative reinforcement on mis-predictions -->
+        <key>Negative_Feedback_Enabled</key>
+        <true/>
+
+        <key>Negative_Feedback_Penalty</key>
+        <real>0.08</real>
+
+        <!-- NEW: on-device federated-style meta-gradient from global model -->
+        <key>Meta_Learning_Enabled</key>
+        <true/>
+
+        <key>Meta_Learning_Steps</key>
+        <integer>3</integer>
+
+        <key>Meta_Learning_Rate</key>
+        <real>0.01</real>
+
+        <!-- NEW: few-shot bootstrapping: n examples suffice for new action -->
+        <key>Few_Shot_Min_Examples</key>
+        <integer>3</integer>
+
+        <!-- NEW: continual-learning replay buffer to fight catastrophic forgetting -->
+        <key>Replay_Buffer_Enabled</key>
+        <true/>
+
+        <key>Replay_Buffer_Size</key>
+        <integer>200</integer>
+
+        <key>Replay_Frequency_Sessions</key>
+        <integer>3</integer>
+
+        <!-- NEW: per-user personalisation layer (separate from global weights) -->
+        <key>Personalization_Layer_Enabled</key>
+        <true/>
+
+        <key>Personalization_Embedding_Dim</key>
+        <integer>32</integer>
+    </dict>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         MULTI-TOUCH PATTERNS
+         ═══════════════════════════════════════════════════════ -->
+    <key>Multi_Touch</key>
+    <dict>
+        <key>Max_Simultaneous_Touches</key>
+        <integer>10</integer>
+
+        <!-- Chords: all fingers must land within this window -->
+        <key>Chord_Onset_Window_ms</key>
+        <real>60.0</real>
+
+        <key>Chord_Release_Window_ms</key>
+        <real>80.0</real>
+
+        <!-- Inter-finger distance normalizer for pinch / spread -->
+        <key>Pinch_Distance_Normalizer_px</key>
+        <real>300.0</real>
+
+        <!-- Rolling averages for twist / rotation -->
+        <key>Rotation_Smoothing_Window</key>
+        <integer>6</integer>
+
+        <!-- NEW: finger-role assignment (thumb vs. index heuristic) -->
+        <key>Finger_Role_Detection_Enabled</key>
+        <true/>
+
+        <!-- NEW: palm rejection via blob-size heuristic -->
+        <key>Palm_Rejection_Enabled</key>
+        <true/>
+
+        <key>Palm_Max_Touch_Radius_px</key>
+        <real>25.0</real>
+
+        <!-- NEW: knuckle-scroll detection -->
+        <key>Knuckle_Scroll_Enabled</key>
+        <true/>
+    </dict>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         TEMPORAL PATTERN RECOGNITION
+         ═══════════════════════════════════════════════════════ -->
+    <key>Temporal_Patterns</key>
+    <dict>
+        <!-- Sequence of gestures treated as a macro -->
+        <key>Sequence_Recognition_Enabled</key>
+        <true/>
+
+        <key>Max_Sequence_Length</key>
+        <integer>8</integer>
+
+        <!-- Maximum gap between sequence steps -->
+        <key>Sequence_Max_Gap_ms</key>
+        <real>600.0</real>
+
+        <!-- Hidden Markov Model for timing transitions -->
+        <key>HMM_Transition_Model_Enabled</key>
+        <true/>
+
+        <key>HMM_States</key>
+        <integer>12</integer>
+
+        <!-- Rhythmic pattern detection (drums / musical gestures) -->
+        <key>Rhythm_Detection_Enabled</key>
+        <true/>
+
+        <key>Rhythm_BPM_Range_Min</key>
+        <real>40.0</real>
+
+        <key>Rhythm_BPM_Range_Max</key>
+        <real>240.0</real>
+    </dict>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         CONTEXT AWARENESS
+         ═══════════════════════════════════════════════════════ -->
+    <key>Context_Awareness</key>
+    <dict>
+        <key>Enabled</key>
+        <true/>
+
+        <!-- Adjust threshold based on user's proven accuracy in this context -->
+        <key>Dynamic_Threshold_Enabled</key>
+        <true/>
+
+        <key>Dynamic_Threshold_Min</key>
+        <real>0.55</real>
+
+        <key>Dynamic_Threshold_Max</key>
+        <real>0.90</real>
+
+        <!-- Time-of-day model: night → lower sensitivity (tired motor control) -->
+        <key>Time_Of_Day_Model_Enabled</key>
+        <true/>
+
+        <!-- Bundle ID → gesture-set mapping -->
+        <key>App_Context_Profiles_Enabled</key>
+        <true/>
+
+        <!-- Device orientation context -->
+        <key>Orientation_Context_Enabled</key>
+        <true/>
+
+        <!-- Motion / walking detection reduces tap sensitivity -->
+        <key>Motion_Context_Enabled</key>
+        <true/>
+
+        <key>Motion_Sensitivity_Reduction_Factor</key>
+        <real>0.85</real>
+
+        <!-- Accessibility: larger targets when VoiceOver / AssistiveTouch active -->
+        <key>Accessibility_Context_Enabled</key>
+        <true/>
+
+        <key>Accessibility_Distance_Scale</key>
+        <real>1.5</real>
+    </dict>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         PERFORMANCE & HARDWARE
+         ═══════════════════════════════════════════════════════ -->
+    <key>Performance</key>
+    <dict>
+        <!-- Thread priority for real-time inference -->
+        <key>Inference_QoS_Class</key>
+        <string>userInteractive</string>
+
+        <!-- Cap CPU budget on inference thread -->
+        <key>Max_CPU_Percent</key>
+        <real>8.0</real>
+
+        <!-- Quantised INT8 model for faster ANE inference -->
+        <key>Model_Quantization</key>
+        <string>int8</string>
+
+        <!-- Cache last N inference results for repeated patterns -->
+        <key>Inference_Cache_Size</key>
+        <integer>50</integer>
+
+        <!-- Batch micro-gestures every N ms for efficiency -->
+        <key>Batch_Inference_Window_ms</key>
+        <real>16.0</real>
+
+        <!-- Metal compute shaders for DTW on GPU -->
+        <key>Metal_DTW_Enabled</key>
+        <true/>
+
+        <!-- 120 Hz ProMotion aware (adaptive sampling rate) -->
+        <key>ProMotion_Aware</key>
+        <true/>
+
+        <!-- Low-power mode: fall back to CPU-only, coarser sampling -->
+        <key>Low_Power_Mode_Fallback_Enabled</key>
+        <true/>
+
+        <key>Low_Power_Sample_Reduction_Factor</key>
+        <real>0.5</real>
+    </dict>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         PERSISTENCE & SYNC
+         ═══════════════════════════════════════════════════════ -->
+    <key>Persistence</key>
+    <dict>
+        <!-- Primary store: Core Data (more robust than UserDefaults) -->
+        <key>Storage_Backend</key>
+        <string>CoreData</string>
+
+        <!-- Auto-save every 3 gestures (was 5) -->
+        <key>Auto_Save_Interval_Gestures</key>
+        <integer>3</integer>
+
+        <key>Backup_To_CoreData</key>
+        <true/>
+
+        <key>Compression_Enabled</key>
+        <true/>
+
+        <!-- NEW: compression algorithm -->
+        <key>Compression_Algorithm</key>
+        <string>lz4</string>
+
+        <!-- NEW: iCloud KeyValue sync for cross-device profile sharing -->
+        <key>iCloud_KV_Sync_Enabled</key>
+        <true/>
+
+        <!-- NEW: CloudKit private DB for full pattern sync -->
+        <key>CloudKit_Sync_Enabled</key>
+        <true/>
+
+        <key>CloudKit_Container</key>
+        <string>iCloud.com.yourapp.gestures</string>
+
+        <!-- NEW: incremental WAL checkpoints to avoid large write spikes -->
+        <key>WAL_Checkpoint_Interval_s</key>
+        <real>30.0</real>
+
+        <!-- NEW: encrypted store on-device (DataProtection class Complete) -->
+        <key>Encryption_Enabled</key>
+        <true/>
+
+        <key>Encryption_DataProtection_Class</key>
+        <string>NSFileProtectionComplete</string>
+
+        <!-- NEW: migration strategy for schema upgrades -->
+        <key>Schema_Migration_Policy</key>
+        <string>lightweight</string>
+    </dict>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         PRIVACY
+         ═══════════════════════════════════════════════════════ -->
+    <key>Privacy</key>
+    <dict>
+        <!-- All ML processing on-device; no raw points leave the device -->
+        <key>On_Device_Only</key>
+        <true/>
+
+        <!-- Differential privacy noise injection before any aggregate export -->
+        <key>Differential_Privacy_Enabled</key>
+        <true/>
+
+        <key>DP_Epsilon</key>
+        <real>2.0</real>
+
+        <key>DP_Delta</key>
+        <real>1e-05</real>
+
+        <!-- Strip any biometric / force metadata from exported payloads -->
+        <key>Anonymize_Force_Data_On_Export</key>
+        <true/>
+
+        <!-- Honour system-level tracking opt-out -->
+        <key>Respect_ATT_Framework</key>
+        <true/>
+
+        <!-- Auto-delete patterns older than N days -->
+        <key>Pattern_Retention_Days</key>
+        <integer>90</integer>
+    </dict>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         DIAGNOSTICS & A/B TESTING
+         ═══════════════════════════════════════════════════════ -->
+    <key>Diagnostics</key>
+    <dict>
+        <key>Performance_Logging_Enabled</key>
+        <true/>
+
+        <!-- Structured JSON logs, debug builds only -->
+        <key>Detailed_Logging_Enabled</key>
+        <false/>
+
+        <!-- Emit signposts for Instruments time-profiling -->
+        <key>OS_Signpost_Enabled</key>
+        <true/>
+
+        <!-- Sliding-window accuracy tracker (last N predictions) -->
+        <key>Rolling_Accuracy_Window</key>
+        <integer>100</integer>
+
+        <!-- Alert if accuracy drops below this floor -->
+        <key>Accuracy_Alert_Threshold</key>
+        <real>0.80</real>
+
+        <!-- Latency budget for real-time inference (ms) -->
+        <key>Latency_Budget_ms</key>
+        <real>8.0</real>
+
+        <!-- Emit warning if P99 inference exceeds budget -->
+        <key>Latency_Budget_Warn_On_Exceed</key>
+        <true/>
+    </dict>
+
+    <key>AB_Testing</key>
+    <dict>
+        <key>Enabled</key>
+        <false/>
+
+        <!-- Deterministic user bucketing via hashed device ID -->
+        <key>Bucket_Count</key>
+        <integer>100</integer>
+
+        <!-- Override threshold per bucket (leave empty to use default) -->
+        <key>Override_Threshold_Bucket_A</key>
+        <real>0.68</real>
+
+        <key>Override_Threshold_Bucket_B</key>
+        <real>0.72</real>
+    </dict>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         HAPTIC FEEDBACK INTEGRATION
+         ═══════════════════════════════════════════════════════ -->
+    <key>Haptic_Feedback</key>
+    <dict>
+        <key>Enabled</key>
+        <true/>
+
+        <!-- Trigger on high-confidence recognition -->
+        <key>Recognition_Feedback_Style</key>
+        <string>light</string>
+
+        <!-- Trigger on low-confidence mis-recognition -->
+        <key>Error_Feedback_Style</key>
+        <string>warning</string>
+
+        <!-- Respect system-level haptics toggle -->
+        <key>Respect_System_Haptics_Setting</key>
+        <true/>
+    </dict>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         SUPPORTED GESTURE TYPES
+         ═══════════════════════════════════════════════════════ -->
+    <key>Supported_Gesture_Types</key>
+    <array>
+        <string>tap</string>
+        <string>doubleTap</string>
+        <string>tripleTap</string>
+        <string>swipe</string>
+        <string>edgeSwipe</string>
+        <string>flick</string>
+        <string>longPress</string>
+        <string>forceTap</string>
+        <string>pinch</string>
+        <string>spread</string>
+        <string>rotation</string>
+        <string>scrub</string>
+        <string>drawAndHold</string>
+        <string>multiFingerSwipe</string>
+        <string>chord</string>
+        <string>rhythm</string>
+        <string>pencilStroke</string>
+        <string>pencilDoubleTap</string>
+        <string>custom</string>
+        <string>sequence</string>
+    </array>
+
+</dict>
+</plist>
